@@ -1,69 +1,51 @@
-import express from 'express';
-import cors from 'cors';
+const express = require("express");
+const cors = require("cors");
 
 const app = express();
+const PORT = process.env.PORT || 8000;
+
 app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT || 8080;
-
-// Health
-app.get('/api/health', (req, res) => res.json({ ok: true }));
-
-// Auth stubs
-app.post('/api/auth/signup', (req, res) => {
-  const { companyName, email } = req.body || {};
-  return res.status(201).json({ token: 'demo-token', userId: 'u_demo', companyId: 'c_demo', email, companyName });
-});
-app.post('/api/auth/login', (req, res) => {
-  return res.json({ token: 'demo-token', userId: 'u_demo', companyId: 'c_demo' });
-});
-
-// Wallet provision stub
-app.post('/api/wallet/provision', (req, res) => {
-  const { platform, cardId } = req.body || {};
-  return res.status(202).json({ started: true, platform, cardId });
-});
-
-// Webhook stub
-app.post('/api/transactions/webhook', (req, res) => {
-  // TODO: verify signature header X-FuelGo-Signature
-  console.log('Webhook event:', req.body);
-  return res.json({ received: true });
-});
-
-// Vehicles
+// Fake data (later kun je dit koppelen aan een database)
 let vehicles = [
-  { id: 'V-001', plate: 'XX-123-K', label: 'Sprinter #1', limitDaily: 200, geofenceRequired: true },
-  { id: 'V-002', plate: 'ZZ-987-P', label: 'Model 3', limitDaily: 250, geofenceRequired: true }
+  { id: 1, plate: "AA-123-B", label: "Caddy #1", limitDaily: 200, geofenceRequired: true },
 ];
-app.get('/api/vehicles', (req, res) => res.json(vehicles));
-app.post('/api/vehicles', (req, res) => {
-  const v = { id: `V-${String(vehicles.length+1).padStart(3,'0')}`, ...req.body };
+
+let transactions = [
+  { id: 1, merchant: "Shell Almere", when: new Date(), kind: "Fuel", plate: "AA-123-B", amount: 85.5 },
+];
+
+// Routes
+app.get("/", (req, res) => {
+  res.send("🚀 FuelGo API is live!");
+});
+
+app.get("/vehicles", (req, res) => {
+  res.json(vehicles);
+});
+
+app.post("/vehicles", (req, res) => {
+  const v = { id: vehicles.length + 1, ...req.body };
   vehicles.push(v);
-  res.status(201).json(v);
-});
-app.put('/api/vehicles/:id', (req, res) => {
-  const idx = vehicles.findIndex(v => v.id === req.params.id);
-  if (idx < 0) return res.status(404).json({ error: 'not found' });
-  vehicles[idx] = { ...vehicles[idx], ...req.body };
-  res.json(vehicles[idx]);
+  res.json(v);
 });
 
-// Transactions
-const transactions = [
-  { id: 'TX-10021', when: new Date().toISOString(), merchant: 'Shell Almere Poort', amount: 82.4, kind: 'Fuel', plate: 'XX-123-K' }
-];
-app.get('/api/transactions', (req, res) => res.json(transactions));
-
-// Km-log
-app.post('/api/km-log', (req, res) => {
-  const { transactionId, km } = req.body || {};
-  if (!transactionId || typeof km !== 'number') return res.status(400).json({ error: 'bad_request' });
-  return res.status(201).json({ ok: true, transactionId, km });
+app.get("/transactions", (req, res) => {
+  res.json(transactions);
 });
 
-// Invoices
-app.get('/api/invoices', (req, res) => res.json([{ id: 'INV-2025-09', month: '2025-09', url: 'https://example.com/inv.pdf' }]));
+app.post("/km-log", (req, res) => {
+  console.log("Km-log:", req.body);
+  res.json({ ok: true });
+});
 
-app.listen(PORT, () => console.log(`FuelGo API running on http://localhost:${PORT}`));
+app.post("/wallet/provision", (req, res) => {
+  console.log("Provision:", req.body);
+  res.json({ ok: true, platform: req.body.platform });
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`FuelGo API running on http://localhost:${PORT}`);
+});
